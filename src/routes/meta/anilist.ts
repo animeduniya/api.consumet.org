@@ -1,14 +1,14 @@
 import { Redis } from 'ioredis';
 import { FastifyRequest, FastifyReply, FastifyInstance, RegisterOptions } from 'fastify';
 import { ANIME, META, PROVIDERS_LIST } from '@consumet/extensions';
-import { Genres, SubOrSub } from '@consumet/extensions/dist/models';
+import { Genres } from '@consumet/extensions/dist/models';
 import Anilist from '@consumet/extensions/dist/providers/meta/anilist';
 import { StreamingServers } from '@consumet/extensions/dist/models';
 
 import cache from '../../utils/cache';
 import { redis } from '../../main';
 import NineAnime from '@consumet/extensions/dist/providers/anime/9anime';
-import Zoro from '@consumet/extensions/dist/providers/anime/zoro';
+import Gogoanime from '@consumet/extensions/dist/providers/anime/gogoanime';
 
 const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   fastify.get('/', (_, rp) => {
@@ -92,15 +92,15 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
     redis
       ? reply
-        .status(200)
-        .send(
-          await cache.fetch(
-            redis as Redis,
-            `anilist:trending;${page};${perPage}`,
-            async () => await anilist.fetchTrendingAnime(page, perPage),
-            60 * 60,
-          ),
-        )
+          .status(200)
+          .send(
+            await cache.fetch(
+              redis as Redis,
+              `anilist:trending;${page};${perPage}`,
+              async () => await anilist.fetchTrendingAnime(page, perPage),
+              60 * 60,
+            ),
+          )
       : reply.status(200).send(await anilist.fetchTrendingAnime(page, perPage));
   });
 
@@ -112,15 +112,15 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
     redis
       ? reply
-        .status(200)
-        .send(
-          await cache.fetch(
-            redis as Redis,
-            `anilist:popular;${page};${perPage}`,
-            async () => await anilist.fetchPopularAnime(page, perPage),
-            60 * 60,
-          ),
-        )
+          .status(200)
+          .send(
+            await cache.fetch(
+              redis as Redis,
+              `anilist:popular;${page};${perPage}`,
+              async () => await anilist.fetchPopularAnime(page, perPage),
+              60 * 60,
+            ),
+          )
       : reply.status(200).send(await anilist.fetchPopularAnime(page, perPage));
   });
 
@@ -133,7 +133,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       const weekEnd = (request.query as { weekEnd: number | string }).weekEnd;
       const notYetAired = (request.query as { notYetAired: boolean }).notYetAired;
 
-      const anilist = generateAnilistMeta();
+       const anilist = generateAnilistMeta();
       const _weekStart = Math.ceil(Date.now() / 1000);
 
       const res = await anilist.fetchAiringSchedule(
@@ -172,7 +172,7 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
   fastify.get(
     '/recent-episodes',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const provider = (request.query as { provider: 'zoro' }).provider;
+      const provider = (request.query as { provider: 'gogoanime' | 'zoro' }).provider;
       const page = (request.query as { page: number }).page;
       const perPage = (request.query as { perPage: number }).perPage;
 
@@ -224,23 +224,23 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     try {
       redis
         ? reply
-          .status(200)
-          .send(
-            await cache.fetch(
-              redis,
-              `anilist:episodes;${id};${dub};${fetchFiller};${anilist.provider.name.toLowerCase()}`,
-              async () =>
-                anilist.fetchEpisodesListById(
-                  id,
-                  dub as boolean,
-                  fetchFiller as boolean,
-                ),
-              dayOfWeek === 0 || dayOfWeek === 6 ? 60 * 120 : (60 * 60) / 2,
-            ),
-          )
+            .status(200)
+            .send(
+              await cache.fetch(
+                redis,
+                `anilist:episodes;${id};${dub};${fetchFiller};${anilist.provider.name.toLowerCase()}`,
+                async () =>
+                  anilist.fetchEpisodesListById(
+                    id,
+                    dub as boolean,
+                    fetchFiller as boolean,
+                  ),
+                dayOfWeek === 0 || dayOfWeek === 6 ? 60 * 120 : (60 * 60) / 2,
+              ),
+            )
         : reply
-          .status(200)
-          .send(await anilist.fetchEpisodesListById(id, dub, fetchFiller as boolean));
+            .status(200)
+            .send(await anilist.fetchEpisodesListById(id, dub, fetchFiller as boolean));
     } catch (err) {
       return reply.status(404).send({ message: 'Anime not found' });
     }
@@ -277,21 +277,21 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
     try {
       redis
         ? reply
-          .status(200)
-          .send(
-            await cache.fetch(
-              redis,
-              `anilist:info;${id};${isDub};${fetchFiller};${anilist.provider.name.toLowerCase()}`,
-              async () =>
-                anilist.fetchAnimeInfo(id, isDub as boolean, fetchFiller as boolean),
-              dayOfWeek === 0 || dayOfWeek === 6 ? 60 * 120 : (60 * 60) / 2,
-            ),
-          )
+            .status(200)
+            .send(
+              await cache.fetch(
+                redis,
+                `anilist:info;${id};${isDub};${fetchFiller};${anilist.provider.name.toLowerCase()}`,
+                async () =>
+                  anilist.fetchAnimeInfo(id, isDub as boolean, fetchFiller as boolean),
+                dayOfWeek === 0 || dayOfWeek === 6 ? 60 * 120 : (60 * 60) / 2,
+              ),
+            )
         : reply
-          .status(200)
-          .send(
-            await anilist.fetchAnimeInfo(id, isDub as boolean, fetchFiller as boolean),
-          );
+            .status(200)
+            .send(
+              await anilist.fetchAnimeInfo(id, isDub as boolean, fetchFiller as boolean),
+            );
     } catch (err: any) {
       reply.status(500).send({ message: err.message });
     }
@@ -313,46 +313,25 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
       const episodeId = (request.params as { episodeId: string }).episodeId;
       const provider = (request.query as { provider?: string }).provider;
       const server = (request.query as { server?: StreamingServers }).server;
-      let isDub = (request.query as { dub?: string | boolean }).dub;
 
       if (server && !Object.values(StreamingServers).includes(server))
         return reply.status(400).send('Invalid server');
-
-      if (isDub === 'true' || isDub === '1') isDub = true;
-      else isDub = false;
 
       let anilist = generateAnilistMeta(provider);
 
       try {
         redis
           ? reply
-            .status(200)
-            .send(
-              await cache.fetch(
-                redis,
-                `anilist:watch;${episodeId};${anilist.provider.name.toLowerCase()};${server};${isDub ? 'dub' : 'sub'}`,
-                async () =>
-                  provider === 'zoro' || provider === 'animekai'
-                    ? await anilist.fetchEpisodeSources(
-                      episodeId,
-                      server,
-                      isDub ? SubOrSub.DUB : SubOrSub.SUB,
-                    )
-                    : await anilist.fetchEpisodeSources(episodeId, server),
-                600,
-              ),
-            )
-          : reply
-            .status(200)
-            .send(
-              provider === 'zoro' || provider === 'animekai'
-                ? await anilist.fetchEpisodeSources(
-                  episodeId,
-                  server,
-                  isDub ? SubOrSub.DUB : SubOrSub.SUB,
-                )
-                : await anilist.fetchEpisodeSources(episodeId, server),
-            );
+              .status(200)
+              .send(
+                await cache.fetch(
+                  redis,
+                  `anilist:watch;${episodeId};${anilist.provider.name.toLowerCase()};${server}`,
+                  async () => anilist.fetchEpisodeSources(episodeId, server),
+                  600,
+                ),
+              )
+          : reply.status(200).send(await anilist.fetchEpisodeSources(episodeId, server));
 
         anilist = new META.Anilist(undefined, {
           url: process.env.PROXY as string | string[],
@@ -367,23 +346,22 @@ const routes = async (fastify: FastifyInstance, options: RegisterOptions) => {
 
   //anilist staff info from character id (for example: voice actors)
   //http://127.0.0.1:3000/meta/anilist/staff/95095  (gives info of sukuna's voice actor (Junichi Suwabe) )
-  fastify.get('/staff/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get("/staff/:id", async (request: FastifyRequest, reply: FastifyReply) => {
     const id = (request.params as { id: string }).id;
 
     const anilist = generateAnilistMeta();
     try {
       redis
-        ? reply
-          .status(200)
-          .send(
-            await cache.fetch(
-              redis,
-              `anilist:staff;${id}`,
-              async () => await anilist.fetchStaffById(Number(id)),
-              60 * 60,
-            ),
-          )
+        ? reply.status(200).send(
+          await cache.fetch(
+            redis,
+            `anilist:staff;${id}`,
+            async () => await anilist.fetchStaffById(Number(id)),
+            60 * 60,
+          ),
+        )
         : reply.status(200).send(await anilist.fetchStaffById(Number(id)));
+
     } catch (err: any) {
       reply.status(404).send({ message: err.message });
     }
@@ -410,8 +388,8 @@ const generateAnilistMeta = (provider: string | undefined = undefined): Anilist 
       url: process.env.PROXY as string | string[],
     });
   } else {
-    // default provider is Zoro
-    return new Anilist(new Zoro(), {
+    // default provider is gogoanime
+    return new Anilist(new Gogoanime(), {
       url: process.env.PROXY as string | string[],
     });
   }
